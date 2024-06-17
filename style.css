@@ -2,4 +2,14 @@ html,
 body {
     height: 100%;
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas {
+
+    border: 5px solid #444;
+    background-color: green;
+
 }
