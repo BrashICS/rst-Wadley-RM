@@ -11,10 +11,22 @@
 
 const canvas = document.getElementById('poolCanvas');
 const ctx = canvas.getContext('2d');
-
+// This helps set the Timer
+let firstTime = true
+// Radius of the billiard balls
 let radius = 10;
+// Trigger the GameOver Screen
 let GameOver = false
+// Trigger the game Won Screen
+let GameWon = false
+// Will hold the setInterval
+let interval = 0
+let startTime = 0
+let timeElapsed = 0
+
+// How I slow down every object
 const FRICTION = 0.98;
+// Holds colors for the billiard balls
 const COLORS = [
     '#ffffff', '#ff0000', '#0000ff', '#00ff00', '#ff00ff',
     '#00ffff', '#ffff00', '#ffa500', '#800080', '#808080',
@@ -29,9 +41,14 @@ class Ball {
         this.color = color;
         this.vx = 0;
         this.vy = 0;
+        // Visible controls wether or not the object is interactable
+        // Helps deal with pocketed billiard balls making it not visible and non-interactable
+        this.visible = true
+        
     }
 
     draw() {
+        // Draws the billard balls
         ctx.beginPath();
         ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
@@ -40,13 +57,13 @@ class Ball {
     }
 
     move(index) {
-      let i = index
+        let i = index
         this.vx *= FRICTION;
         this.vy *= FRICTION;
         this.x += this.vx;
         this.y += this.vy;
 
-        // Handle collisions with the walls
+        // Typical wall collisions
         if (this.x + radius > canvas.width - 20 && !this.doesBallPassThrough(i)) {
             this.x = canvas.width - radius - 21
             this.vx = -this.vx;
@@ -69,11 +86,12 @@ class Ball {
         }
     }
 
+    // Allows the billiard balls to ignore collisions with walls to be pocketed
     doesBallPassThrough (index) {
-      // Check if the ball is near any of the pockets
-
+      
       for (let i = 0; i < pockets.length; i += 2) {
 
+          // Calculate distance between pocket and billiard ball
           let dx = this.x - pockets[i];
           let dy = this.y - pockets[i+1];
           let distance = Math.sqrt(dx * dx + dy * dy);
@@ -81,8 +99,10 @@ class Ball {
           // Allow the ball to move further if it's close to a pocket
           if (distance < 15 + 10) {
 
-              balls[index] = null
-              if (balls[0] == null){
+              // Pocketed get outta here
+              balls[index].visible = false
+              // if the Cueball is pocketed trigger the GameOver Screen
+              if (balls[0].visible == false){
                 GameOver = true
               }
               return true;
@@ -92,37 +112,40 @@ class Ball {
   }
 
     checkCollision(otherBall) {
+      // Distances between both balls
       let dx = otherBall.x - this.x;
       let dy = otherBall.y - this.y;
       let distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance < radius * 2) {
-         // Calculate the angle of the collision
+    // Calculate the angle of the collision, angle between centers
     let collisionAngle = Math.atan2(dy, dx);
 
     // Calculate initial velocities in the direction of the collision
     let v1 = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
     let v2 = Math.sqrt(otherBall.vx * otherBall.vx + otherBall.vy * otherBall.vy);
+    // Angles of the velocties
     let direction1 = Math.atan2(this.vy, this.vx);
     let direction2 = Math.atan2(otherBall.vy, otherBall.vx);
 
-    // Decompose the velocities into the normal (collision) direction
+    // Get the velocities from to center to center (normal) (collision) direction
     let v1x = v1 * Math.cos(direction1 - collisionAngle);
     let v1y = v1 * Math.sin(direction1 - collisionAngle);
     let v2x = v2 * Math.cos(direction2 - collisionAngle);
     let v2y = v2 * Math.sin(direction2 - collisionAngle);
 
 
-    //Conservation of Momentum
+    // Conservation of Momentum - Thank you God for this Formula
     this.vx = Math.cos(collisionAngle) * v2x + Math.cos(collisionAngle + Math.PI / 2) * v1y
     this.vy = Math.sin(collisionAngle) * v2x + Math.sin(collisionAngle + Math.PI / 2) * v1y
     otherBall.vx = Math.cos(collisionAngle) * v1x + Math.cos(collisionAngle + Math.PI / 2) * v2y
     otherBall.vy = Math.sin(collisionAngle) * v1x + Math.sin(collisionAngle + Math.PI / 2) * v2y
 
-    // Resolve overlap
-    const overlap = (radius * 2 - distance) / 2;
-    const nx = dx / distance;
-    const ny = dy / distance;
+    // How much Overlap
+    let overlap = (radius * 2 - distance) / 2;
+    let nx = dx / distance;
+    let ny = dy / distance;
+    // Adjust the billiard balls away
     this.x -= overlap * nx;
     this.y -= overlap * ny;
     otherBall.x += overlap * nx;
@@ -136,9 +159,11 @@ class Ball {
 }
 
 const balls = [];
-const cueBall = new Ball(100, 200, COLORS[0]);
-balls.push(cueBall);
+let cueBall = new Ball(100, 200, COLORS[0]);
+balls[0]= cueBall;
 
+// Pocket Locations; adjacent indexes are pair i.e pockets[0] and pockets 1; pockets[2] and pockets[3]
+// Oddly done yeah, but I've come too far
 let pockets = [
   30, 30,                                 // Top-left pocket
   canvas.width / 2, 15,                   // Top-center pocket
@@ -154,9 +179,13 @@ let x;
 let y;
 let row = 0;
 let count = 0;
+// 5 rows
 for (let i = 1; i < 6; i++) {
+  // Height of each row grows by 1 per each row
     for (let j = 0; j < i; j++) {
+
          x = startX + (radius* 2 + 1) * row;
+         // I and J are used for centering the billiard balls
          y = startY - (radius * 2 + 1) * (i / 2) + j * (radius* 2 + 1);
         balls.push(new Ball(x, y, COLORS[count + 1]));
         count++;
@@ -166,16 +195,16 @@ for (let i = 1; i < 6; i++) {
 
 function drawTable() {
   // Draw table surface
-  ctx.fillStyle = '#008000';  // green color
+  ctx.fillStyle = '#008000'; 
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw railings (borders)
-  ctx.strokeStyle = '#964B00';  // brown color
+  ctx.strokeStyle = '#964B00';  
   ctx.lineWidth = 20;
   ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
   // Draw pockets (sockets)
-  ctx.fillStyle = '#000';  // black color
+  ctx.fillStyle = '#000';  
   for (let i = 0; i < pockets.length; i += 2) {
 
 
@@ -189,17 +218,24 @@ function drawTable() {
 
 
 function update() {
-
+  // Make sure game doesn't update when you lose
   if (!GameOver){
+    
+    // clear the canvas do be redrawn
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    
     drawTable();
+    
+    // Check each for for a wall collion and redraw
     for (let i = 0; i < balls.length; i++){
-      if (balls[i] != null){
+
+      if (balls[i].visible == true){
       balls[i].move(i)
-      if (balls[i] != null){
+      // Make sure to stop new non-visible billiard balls
+      if (balls[i].visible == true )
       balls[i].draw()
-      }
+      
     }
     }
 
@@ -208,11 +244,13 @@ function update() {
     // Check collisions between balls
    for (let i = 0; i < balls.length; i++) {
         for (let j = i + 1; j < balls.length; j++) {
-          if (balls[i] != null && balls[j] != null){
+          if (balls[i].visible == true && balls[j].visible == true){
             balls[i].checkCollision(balls[j]);
           }
         }
     }
+
+    didGameWin()
   }
   else{
     drawGameOverScreen()
@@ -221,24 +259,41 @@ function update() {
     requestAnimationFrame(update);
 }
 
+// Where we calculate the power of the cueBall
 canvas.addEventListener('click', (event) => {
+  
   if (!GameOver){
+    // Start the Timer
+    if (firstTime){
+      startTime = Date.now() - timeElapsed
+      interval = setInterval(function () {timeElapsed = Date.now() - startTime},1000)
+    }
+    firstTime = false
+    
+    // Get accurate mouseX and mouseY
     const rect = canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-
-    if ((Math.abs(balls[0].vx) < 0.06 && Math.abs(balls[0].vy) < 0.06)){
+    
+    // Make sure the cueBall is still
+    if ((Math.abs(balls[0].vx) < 0.07 && Math.abs(balls[0].vy) < 0.07)){
     // Calculate velocity based on distance to mouse click
     cueBall.vx = (mouseX - cueBall.x) / 10;
     cueBall.vy = (mouseY - cueBall.y) / 10;
-    }
+    
+  }
+  
   }
 });
 
+
+
 function drawGameOverScreen() {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  //Draw the red screen of doom
+  clearInterval(interval)
+  ctx.fillStyle = "#FF474D";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  GameOver = true
+  
 
   ctx.font = '30px Arial';
   ctx.fillStyle = '#ffffff';
@@ -248,43 +303,77 @@ function drawGameOverScreen() {
   ctx.fillText('Press any key to play again', canvas.width / 2, canvas.height / 2 + 20);
 }
 
+function drawGameWinScreen(timeElapsed){
+// Draw the winning screen
+  ctx.fillStyle = 'rgba(144, 238, 144, 1)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+
+  ctx.font = '30px Arial';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('You Won', canvas.width / 2, canvas.height / 2 - 20);
+  ctx.font = '20px Arial';
+  ctx.fillText('Press any key to play again', canvas.width / 2, canvas.height / 2 + 20);
+  ctx.fillText('Your time was ' + timeElapsed + " seconds!", canvas.width / 2, canvas.height / 2 + 40);
+}
+
 document.addEventListener('keydown', function(event) {
-  if (GameOver) {
+  // Whenever were in GameOver or GameWon phase keydown will restart the game
+  if (GameOver || GameWon) {
       resetGame();
   }
 });
 
+function didGameWin(){
+  // If all of the balls are not visible
+  for (let i = 1; i < balls.length; i++){
+    if (balls[i].visible == true){
+      return
+    }
+  }
+  // Yayyyyy
+  GameWon = true
+  clearInterval(interval)
+  drawGameWinScreen(timeElapsed/1000)
+}
+
 function resetGame() {
   GameOver = false;
+  GameWon = false;
   // Clear canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for( let i = 0; i < balls.length; i++){
-    balls[i] = null
+  // Default all stats for the next game
+  interval;
+  timeElapsed = 0
+  startTime = 0
+  firstTime = true
+  startX = 600;
+  startY = 200;
+  x;
+  y;
+  row = 0;
+  count = 1;
+  cueBall.x = 100
+  cueBall.y = 200
+  for (let i = 0; i < balls.length; i++){
+    balls[i].visible = true
+    balls[i].vx = 0
+    balls[i].vy = 0
+    
   }
-
-startX = 600;
-startY = 200;
-x;
-y;
-row = 0;
-count = 0;
-balls.push(new Ball(100, 200, COLORS[0]));
-
-  for (let i = 0; i < 6; i++) {
+  // Redraw the triangle
+  for (let i = 1; i < 6; i++) {
     for (let j = 0; j < i; j++) {
          x = startX + (radius* 2 + 1) * row;
          y = startY - (radius * 2 + 1) * (i / 2) + j * (radius* 2 + 1);
-        balls.push(new Ball(x, y, COLORS[count + 1]));
-        count++;
+        balls[count].x = x
+        balls[count].y = y
+        count++
+        
     }
     row++;
 }
-
-  // Restart game loop
-  update();
+ 
 }
-
-
-
-
 update();
